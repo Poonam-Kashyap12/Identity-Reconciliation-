@@ -47,7 +47,7 @@ app.post("/identify", async (req, res) => {
       });
     }
 
-    // 4️⃣ Get all related contacts (primary + secondaries)
+    // 4️⃣ Get all related contacts
     const contactIds = matchingContacts.map((c) => c.id);
     const linkedIds = matchingContacts
       .map((c) => c.linkedId)
@@ -64,12 +64,12 @@ app.post("/identify", async (req, res) => {
       },
     });
 
-    // 5️⃣ Find oldest contact → make it primary
+    // 5️⃣ Oldest contact becomes primary
     const primaryContact = allRelatedContacts.sort(
       (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
     )[0];
 
-    // 6️⃣ Ensure only one primary exists
+    // 6️⃣ Normalize group (ensure single primary)
     for (const contact of allRelatedContacts) {
       if (contact.id !== primaryContact.id) {
         if (
@@ -87,7 +87,7 @@ app.post("/identify", async (req, res) => {
       }
     }
 
-    // 7️⃣ Check if NEW information exists
+    // 7️⃣ Check for new information
     const existingEmails = allRelatedContacts
       .map((c) => c.email)
       .filter((e) => e !== null);
@@ -101,7 +101,6 @@ app.post("/identify", async (req, res) => {
       ? existingPhones.includes(phoneNumber)
       : true;
 
-    // Only create secondary if new info is provided
     if (!emailExists || !phoneExists) {
       await prisma.contact.create({
         data: {
@@ -113,7 +112,7 @@ app.post("/identify", async (req, res) => {
       });
     }
 
-    // 8️⃣ Fetch updated full group
+    // 8️⃣ Fetch updated group
     const finalContacts = await prisma.contact.findMany({
       where: {
         OR: [{ id: primaryContact.id }, { linkedId: primaryContact.id }],
@@ -148,6 +147,9 @@ app.post("/identify", async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  console.log("Server running on port 3000 🚀");
+// ✅ IMPORTANT CHANGE FOR DEPLOYMENT
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT} 🚀`);
 });
